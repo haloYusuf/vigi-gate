@@ -1,0 +1,76 @@
+AI : Gemini 3.1 Pro (Standard & Extended)
+
+--------------------------------------------------------------------------------------------------------
+
+Prompt 1 (Inisiasi Context Backend)
+Bertindaklah sebagai Senior Spring Boot Developer. Aku sedang membuat project dengan Fitur utamanya:
+Smart Registration : Input dengan data yang dibawa adalah nama, NIK, tujuan, foto (bisa mock)
+Risk Scoring : Algoritma yang intinya bisa menentukan status tamu (Green/Yellow/Red) berdasarkan jam kunjungan dan frekuensi kunjungannya
+Real-time Log : Dashboard yang menampilkan siapa saja yang sedang berada di dalam area
+AI Summary Report : Bisa generate summary kunjungan hari ini menggunakan bantuan AI API
+Untuk teknologi yang mau kugunakan
+Tech stack: Java 21, Spring Boot 4.1.0, Maven
+OS: Ubuntu
+Database: PostgreSQL 16-alpine (port 5432) via Docker
+Aku juga ingin menggunakan library java-dotenv untuk keamanan credentials
+Aku ingin kamu menjadi asistenku dalam project ini, tugas pertamamu
+Tugas 1: Breakdown konteks yang aku berikan, berikan gambaran alur sepemahamanmu, buatkan kebutuhan fungsional dan non fungsionalnya
+Tugas 2: Berikan daftar dependencies pasti yang harus aku centang/tambahkan di IntelliJ (pom.xml)
+Tugas 3: Buatkan docker-compose.yml untuk Postgres
+Tugas 4: Buatkan contoh .env dan application.yml untuk koneksinya
+
+--------------------------------------------------------------------------------------------------------
+
+Prompt 2 (Arsitektur DB, Struktur Folder)
+Selanjutnya, buatkan blueprint sistemnya dengan detail:
+Skema databaseku yang akan aku buat adalah:
+Tabel 1: Guest(id, nik, nama, photo)
+Tabel 2: Visit(id, guest_id, purpose, checkInTime, checkOutTime, riskStatus, visitStatus)
+Isi dari visitStatus antara CHECKED_IN dan CHECKED_OUT
+isi dari riskStatus antara RED, YELLOW, GREEN
+Tugasmu adalah :
+Tugas 1: Buatkan tree struktur folder/package Clean MVC yang compact namun tetap memperhatikan SoC untuk project ini
+Tugas 2: Buatkan breakdown sub-tugas (to-do list) implementasi per fitur agar pengerjaannya terstruktur
+
+--------------------------------------------------------------------------------------------------------
+
+Prompt 3 (Prompting Fitur & Unit testing)
+Mulai koding dari tugas pertama. Buatkan Fitur Smart Registration, dimana ada pengecekkan berdasarkan input nama, nik, tujuan, dan foto(Bisa mock).
+Alur yang ingin ku buat di front end nanti adalah Pengguna input NIK, dicek apakah ada di table Guest, kalau sudah, bakal muncul form untuk isi tujuannya apa, lalu langsung masuk ke table visit. Kalau belum ada akan muncul form isi data nama, tujuan, dan foto, baru datanya masuk ke Guest dan juga visit.
+Untuk riskStatusnya disini ada 3 kondisi.
+Kalau misal checkInTime nya diantara pukul 22 sampai pukul 6 dan lebih dari 2x checkin atau dalam sehari lebih dari 5x checkin, maka riskStatusnya RED.
+Kalau diantara pukul 18 sampai 22 atau jika dalam sehari lebih dari 3x checkin, maka Yellow.
+Selain itu GREEN.
+Dan aku juga mau jika sudah checkin tapi belum checkout, lalu checkin lagi, tidak akan bisa (Harus checkout terlebih dahulu).
+Tugas: Buatkan kode lengkap untuk fitur Smart Registration ini mulai dari repository sampai ke controller.
+Penting: Berikan juga Unit Test lengkap menggunakan JUnit dan Mockito khusus untuk menguji fitur ini.
+
+--------------------------------------------------------------------------------------------------------
+
+Prompt 4 (Prompting AI Integration)
+Selanjutnya AI Summary Report, aku ingin kamu memberikan ku saran terlebih dahulu terkait AI apa yang gratis, cepat, dan bisa didapatkan APInya. Selanjutnya, aku mau kamu buatkan implementasi AI Summary Report dengan alur mendapatkan semua tamu yang datang / pergi hari ini, dapatkan lama dia disini (wakhtu checkedin - checkedout dalam menit, jika belum check out buat 0 aja), dapatkan tujuan dia disini. Nanti data tersebut diberikan ke AI lalu ainya akan memberi response summary, response tersebut yang nanti akan dikasi ke API nya.
+Tugas: Buatkan kode lengkap implementasi AI Summary Report dari awal hingga controller, disini aku menggunakan depedencies dari google-genai.
+
+--------------------------------------------------------------------------------------------------------
+
+Prompy 5 (Penjelasan endpoint di Front End)
+Selanjutnya, disini aku jelaskan ke kamu terkait endpointku, disini ada 5 endpoint:
+Base URL:http://localhost:8080/vigi/v1
+Endpoint 1 : /dashboard/stream (GET)
+Ini endpoint dengan tipe MediaType.TEXT_EVENT_STREAM_VALUE, dimana dia realtime untuk mengecek siapa saja yang CHECKED_IN di backend, dengan eventnya bernama 'dashboard-update', outputnya:
+"totalActiveGuests": 0 dan ListactiveGuests yang isinya di tiap list adalah(visitId, nik, nama, photo, purpose, riskStatus, checkInTime)
+Endpoint 2: /dashboard/today (GET)
+Ini endpoint yang nanti konsepnya tombol Summary data Today, ketika ditekan, endpoint ini dipanggil dan akan loading untuk call AI merangkum semua data yang CHECKIN hari ini dan akan memberikan highlight, result jika berhasil : {"result":"", "totalGuest": 0}
+Endpoint 3: /reg/{NIK} (GET)
+Konsepnya, ketika ada yang mau checkin, kan pengguna memasukkan NIKnya dulu, lalu dicek pakai endpoint ini, dengan output:
+{nama bisa null, photo bisa null, hasActiveVisit true/false, registered true/false}
+Jika registerednya false, maka tampilan selanjutnya isi nama, photo (url), dan purpose.
+tapi jika tegisterednya true, langsung input purpose (nama dan photonya otomatis terisi).
+Endpoint 4: /reg/checkin (POST)
+Perlu body berupa nik, nama, purpose, dan photo.
+Berfungsi untuk checkin, resultnya adalah id, guest(isinya ada id, nik, nama, photo), purpose, checkInTime, checkOutTime, riskStatus (Antara RED, YELLOW, atau GREEN), dan visitStatus(Pasti Checked_In)
+Endpoint 5: /reg/checkout/{id} (PUT)
+Menggunakan id (bukan id guest), Outputnya sama seperti checkin kecuali di bagian visitStatus(Pasti Checked_Out)
+Nah dari kelima endpoint itu, alurnya adalah, halaman awal menunjukkan list dari orang yang ada pada lokasi (Menggunakan endpoint 1) dan realtime (kalau ada yang berubah otomatis datanya ikut berubah), lalu ada tombol untuk menampilkan dialog, di dialog tersebut, pengguna memasukkan nik lalu menekan tombol next, ketika tombol next ditekan, maka akan menjalankan endpoint 3, lalu kalau hasil dari endpoint 3 itu adalah true untuk registerednya, maka akan muncul informasi nama dan foto yang tidak bisa diedit, dan ada textfield untuk tujuan (purpose), kalau false, maka akan muncul textfield untuk nama, foto, dan tujuan.
+Dan ada juga tombol add yang nanti ketika ditekan akan hit endpoint 4. Lalu di list awal tadi ada tombol untuk checkout, yang ketika ditekan akan muncul peringatan, dan ketika diklick yes, akan otomatis hit endpoint 5. Dan ada juga tombol diluar list, yang diberi nama (Summary today), ketika di klick akan loading dan hit endpoint nomor 2, nanti resultnya akan muncul di section atas tombolnya. Akan ada penanganan error jika httpnya 400+ atau 500+.
+Pahami dulu alurnya.Lalu sebelum mulai, buatkan aku dulu struktur folder (Project) sesuai best practice programmer angular (menerapkan SoC)
